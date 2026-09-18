@@ -1,5 +1,3 @@
-# Automated GitHub Actions CI/CD Infrastructure with Terraform and EC2 Configuration , Website Deployment with Ansible
-
 # Ansible EC2 Configuration & Docker Deployment
 
 ## 📌 Overview
