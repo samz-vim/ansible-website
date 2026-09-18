@@ -2,9 +2,9 @@ name: AS
 
 on:
   repository_dispatch:
-    types: [tf-complete]
+    types: [ci-complete]
   workflow_run:
-    workflows: ["TF"]
+    workflows: ["CI"]
     types:
       - completed
 
