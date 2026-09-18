@@ -22,20 +22,58 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+
+      - name: Install Ansible Docker collection
+        run: |
+          ansible-galaxy collection install community.docker
+
       - name: Configure SSH key
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > docker.pem
           chmod 400 docker.pem
-          
-      - name: Install Ansible
+
+      - name: Get EC2 public IP
+        id: ec2_ip
         run: |
-          sudo apt update
-          sudo apt install ansible -y
-          
+          cd terraform
+          terraform init -input=false
+          EC2_IP=$(terraform output -raw instance_public_ip)
+          echo "EC2_IP=$EC2_IP" >> "$GITHUB_ENV"
+
       - name: Create Ansible inventory
         run: |
-          echo "[webservers]" > inventory.ini
-          echo "ec2 ansible_host=${{ needs.terraform.outputs.instance_ip }} ansible_user=ubuntu ansible_ssh_private_key_file=$PWD/docker.pem" >> inventory.ini
+          mkdir -p ansible/inventory
+
+          cat > ansible/inventory/hosts.ini <<EOF
+          [webservers]
+          ec2 ansible_host=${EC2_IP} ansible_user=ubuntu ansible_ssh_private_key_file=$GITHUB_WORKSPACE/docker.pem
+          EOF
+
+          cat ansible/inventory/hosts.ini
+
+      - name: Test Ansible connection
+        run: |
+          ansible -i ansible/inventory/hosts.ini webservers -m ping
+
+      - name: Configure EC2 and install Docker
+        run: |
+          ansible-playbook \
+            -i ansible/inventory/hosts.ini \
+            ansible/playbooks/configure.yml
+
+      - name: Deploy website
+        run: |
+          ansible-playbook \
+            -i ansible/inventory/hosts.ini \
+            ansible/playbooks/deploy.yml
+          
 
           
           echo "================================="
