@@ -1,724 +1,537 @@
-# Automated CI/CD Infrastructure & Website Deployment with Terraform and GitHub Actions
+# Automated GitHub Actions CI/CD Infrastructure with Terraform and EC2 Configuration , Website Deployment with Ansible
 
-## 📌 Project Overview
+# Ansible EC2 Configuration & Docker Deployment
 
-This project demonstrates a complete **Infrastructure as Code (IaC) and CI/CD automation workflow** for deploying a website to an AWS EC2 instance.
+## 📌 Overview
 
-The infrastructure is provisioned automatically using **Terraform**, the application server is configured using **Ansible**, the website is containerized with **Docker**, and **GitHub Actions** automates the CI/CD workflow.
+This project uses **Ansible** to automatically configure and provision an existing AWS EC2 instance for application deployment.
 
-The goal of this project is to eliminate manual infrastructure and application deployment by creating an automated pipeline from **code push → infrastructure → server configuration → Docker deployment → running website**.
+The Ansible configuration is designed to work as part of a larger DevOps workflow where:
+
+**Terraform** creates the AWS infrastructure → **Ansible** configures the EC2 instance → **Docker** runs the application → **GitHub Actions** automates the entire process.
+
+The goal is to eliminate manual server configuration and create a repeatable deployment process.
 
 ---
 
 ## 🏗️ Architecture
 
 ```text
-                    Developer
-                        │
-                        │ git push
-                        ▼
-                ┌─────────────────┐
-                │     GitHub      │
-                │   Repository    │
-                └────────┬────────┘
-                         │
-                         ▼
-                ┌─────────────────┐
-                │ GitHub Actions  │
-                │   CI/CD Pipeline│
-                └────────┬────────┘
-                         │
-             ┌───────────┴───────────┐
-             │                       │
-             ▼                       ▼
-      ┌─────────────┐        ┌─────────────┐
-      │  Terraform  │        │   Website   │
-      │     IaC     │        │    Build    │
-      └──────┬──────┘        └──────┬──────┘
-             │                       │
-             ▼                       │
-      ┌─────────────┐                │
-      │    AWS      │                │
-      │     VPC     │                │
-      │   Subnet    │                │
-      │     SG      │                │
-      │    EC2      │                │
-      └──────┬──────┘                │
-             │                       │
-             ▼                       ▼
-      ┌──────────────────────────────────┐
-      │            Ansible               │
-      │      Server Configuration        │
-      └────────────────┬─────────────────┘
-                       │
-                       ▼
-                ┌─────────────┐
-                │    Docker   │
-                │  Container  │
-                └──────┬──────┘
-                       │
-                       ▼
-                ┌─────────────┐
-                │   Website   │
-                │   :80/HTTP  │
-                └─────────────┘
+                    GitHub Actions
+                          │
+                          ▼
+                     Terraform
+                          │
+                    Creates EC2
+                          │
+                          ▼
+                     AWS EC2
+                          │
+                          ▼
+                       Ansible
+                          │
+              ┌───────────┴───────────┐
+              │                       │
+        Configure Server         Install Docker
+              │                       │
+              └───────────┬───────────┘
+                          ▼
+                    Docker Ready
+                          │
+                          ▼
+                    Pull Image
+                          │
+                          ▼
+                 Run Application
+                          │
+                          ▼
+                      Website
 ```
 
 ---
 
-# 🚀 Project Objectives
+## 🛠️ Technologies Used
 
-The main objectives of this project are to:
-
-* Provision AWS infrastructure automatically.
-* Manage infrastructure using Terraform.
-* Automate Terraform execution using GitHub Actions.
-* Configure the EC2 server automatically using Ansible.
-* Install required server dependencies automatically.
-* Containerize the website using Docker.
-* Automate website deployment.
-* Reduce manual configuration.
-* Create a repeatable and scalable deployment process.
-* Demonstrate real-world DevOps practices.
+* Ansible
+* AWS EC2
+* Ubuntu
+* SSH
+* Docker
+* GitHub Actions
+* Terraform
+* Docker Hub
 
 ---
 
-# 🛠️ Technologies Used
-
-| Technology          | Purpose                      |
-| ------------------- | ---------------------------- |
-| **Git & GitHub**    | Source code management       |
-| **GitHub Actions**  | CI/CD automation             |
-| **Terraform**       | Infrastructure as Code       |
-| **AWS**             | Cloud infrastructure         |
-| **EC2**             | Application server           |
-| **VPC**             | Network infrastructure       |
-| **Security Groups** | Network security             |
-| **Ansible**         | Server configuration         |
-| **Docker**          | Application containerization |
-| **Nginx**           | Web server                   |
-| **Ubuntu**          | EC2 operating system         |
-
----
-
-# ☁️ AWS Infrastructure
-
-Terraform is responsible for creating and managing the AWS infrastructure.
-
-The infrastructure includes:
-
-* VPC
-* Public subnet
-* Internet Gateway
-* Route table
-* Route table association
-* Security group
-* EC2 instance
-* Elastic IP
-
-### Network Configuration
+## 📁 Project Structure
 
 ```text
-VPC
-10.0.0.0/16
+ans/
 │
-└── Public Subnet
-    10.0.1.0/24
-    │
-    └── Ubuntu EC2
-        │
-        ├── Port 22 → SSH
-        └── Port 80 → HTTP
-```
-
----
-
-# 📁 Project Structure
-
-```text
-.
-├── terraform/
-│   ├── providers.tf
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── terraform.tfvars.example
-│   └── .gitignore
+├── ansible.cfg
 │
-├── ansible/
-│   ├── inventory
-│   ├── playbook.yml
-│   └── roles/
-│       └── docker/
+├── inventory/
+│   └── hosts.ini
 │
-├── website/
-│   ├── index.html
-│   ├── Dockerfile
-│   └── ...
+├── playbooks/
+│   ├── setup.yml
+│   ├── docker.yml
+│   └── deploy.yml
 │
-├── .github/
-│   └── workflows/
-│       └── terraform.yml
-│
-├── .gitignore
 └── README.md
 ```
 
 ---
 
-# 🏗️ Terraform
+# ⚙️ Prerequisites
 
-Terraform is used to define the infrastructure as code.
+Before using this project, make sure you have:
 
-Instead of manually creating AWS resources through the AWS Console, Terraform describes the desired infrastructure in `.tf` files.
-
-### Terraform Files
-
-#### `providers.tf`
-
-Defines the Terraform provider and AWS configuration.
-
-```hcl
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.aws_region
-}
-```
-
-#### `main.tf`
-
-Contains the AWS infrastructure resources such as:
-
-* VPC
-* Subnet
-* Internet Gateway
-* Route Table
-* Security Group
-* EC2
-* Elastic IP
-
-#### `variables.tf`
-
-Contains reusable Terraform variables.
-
-#### `outputs.tf`
-
-Displays important information after deployment, such as:
-
-```text
-Instance ID
-Public IP
-Private IP
-VPC ID
-Subnet ID
-```
-
-#### `terraform.tfvars`
-
-Contains environment-specific values.
-
-This file is intentionally excluded from GitHub because it may contain sensitive configuration.
+* An AWS account
+* A running Ubuntu EC2 instance
+* EC2 public IP address
+* EC2 SSH private key (`.pem`)
+* Ubuntu/WSL or another Linux environment
+* Ansible installed
+* SSH access to the EC2 instance
+* Docker Hub account if deploying a private image
 
 ---
 
-# ⚙️ Terraform Workflow
+# 🔐 SSH Configuration
 
-Terraform follows the standard workflow:
+The EC2 private key should **not** be stored directly inside the project or committed to GitHub.
+
+For local development, store the key inside your WSL/Linux environment:
+
+```bash
+mkdir -p ~/.ssh
+```
+
+Copy your key:
+
+```bash
+cp "/mnt/c/Users/Dell/Downloads/docker.pem" ~/.ssh/docker.pem
+```
+
+Set secure permissions:
+
+```bash
+chmod 400 ~/.ssh/docker.pem
+```
+
+Verify:
+
+```bash
+ls -l ~/.ssh/docker.pem
+```
+
+The key should have restricted permissions:
 
 ```text
-terraform init
-       ↓
-terraform fmt
-       ↓
-terraform validate
-       ↓
-terraform plan
-       ↓
-terraform apply
-       ↓
-AWS Infrastructure
+-r--------
 ```
-
-### Initialize Terraform
-
-```bash
-terraform init
-```
-
-Downloads the required Terraform providers and initializes the working directory.
-
-### Format Configuration
-
-```bash
-terraform fmt
-```
-
-Formats Terraform files according to Terraform's standard formatting rules.
-
-### Validate Configuration
-
-```bash
-terraform validate
-```
-
-Checks whether the Terraform configuration is syntactically valid.
-
-### Preview Infrastructure
-
-```bash
-terraform plan
-```
-
-Shows what Terraform intends to create, modify, or destroy.
-
-### Deploy Infrastructure
-
-```bash
-terraform apply
-```
-
-Creates the infrastructure in AWS.
-
-### Destroy Infrastructure
-
-```bash
-terraform destroy
-```
-
-Removes the infrastructure managed by Terraform.
 
 ---
 
-# 🔄 GitHub Actions CI/CD
+# 📝 Inventory Configuration
 
-GitHub Actions is used to automate Terraform and application deployment.
+The inventory defines the servers that Ansible manages.
 
-The workflow is triggered when changes are pushed to the `main` branch or when a pull request is created.
+Example:
 
-Example workflow:
+```ini
+[webservers]
+ec2 ansible_host=YOUR_EC2_PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=/home/YOUR_USERNAME/.ssh/docker.pem
+```
+
+Replace:
+
+```text
+YOUR_EC2_PUBLIC_IP
+```
+
+with the public IP of your EC2 instance.
+
+---
+
+# 🔍 Test SSH Connection
+
+Before running Ansible, verify that SSH works:
+
+```bash
+ssh -i ~/.ssh/docker.pem ubuntu@YOUR_EC2_PUBLIC_IP
+```
+
+If the connection is successful, exit the server:
+
+```bash
+exit
+```
+
+---
+
+# 🧪 Test Ansible Connectivity
+
+Run:
+
+```bash
+ansible webservers -m ping
+```
+
+A successful connection should return:
+
+```text
+ec2 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+```
+
+This confirms that Ansible can communicate with the EC2 instance.
+
+---
+
+# ⚙️ Server Configuration
+
+The `setup.yml` playbook performs basic server configuration.
+
+Example:
 
 ```yaml
-name: Terraform Infrastructure
+---
+- name: Configure AWS EC2 server
+  hosts: webservers
+  become: true
 
-on:
-  push:
-    branches:
-      - main
+  tasks:
 
-  pull_request:
-    branches:
-      - main
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
 
-permissions:
-  contents: read
+    - name: Install required packages
+      apt:
+        name:
+          - git
+          - curl
+          - unzip
+          - ca-certificates
+        state: present
+```
 
-jobs:
-  terraform:
-    name: Terraform
-    runs-on: ubuntu-latest
+Run:
 
-    defaults:
-      run:
-        working-directory: terraform
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Format Check
-        run: terraform fmt -check
-
-      - name: Terraform Validate
-        run: terraform validate
-
-      - name: Terraform Plan
-        run: terraform plan
+```bash
+ansible-playbook playbooks/setup.yml
 ```
 
 ---
 
-# 🔐 GitHub Secrets
+# 🐳 Docker Configuration
 
-AWS credentials are stored securely inside GitHub repository secrets.
+The `docker.yml` playbook configures Docker on the EC2 instance.
 
-The following secrets are required:
+It:
+
+1. Updates the package repository
+2. Installs Docker
+3. Starts the Docker service
+4. Enables Docker to start automatically
+5. Adds the Ubuntu user to the Docker group
+
+Example:
+
+```yaml
+---
+- name: Configure Docker on AWS EC2
+  hosts: webservers
+  become: true
+
+  tasks:
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Start Docker
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Add ubuntu user to Docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: true
+```
+
+Run:
+
+```bash
+ansible-playbook playbooks/docker.yml
+```
+
+---
+
+# 🔎 Verify Docker
+
+After the playbook completes:
+
+```bash
+ansible webservers -a "docker --version"
+```
+
+You can also verify that Docker is running:
+
+```bash
+ansible webservers -a "systemctl is-active docker"
+```
+
+Expected:
 
 ```text
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-AWS_REGION
+active
 ```
+
+---
+
+# 🚀 Application Deployment
+
+Once Docker is configured, Ansible can deploy the application from a Docker registry.
+
+The deployment process is:
+
+```text
+Docker Registry
+      │
+      │ docker pull
+      ▼
+AWS EC2
+      │
+      ▼
+Docker Container
+      │
+      ▼
+Application
+```
+
+For example, the application image can be:
+
+```text
+samzcode/my-website:latest
+```
+
+Ansible can pull the image and run it on the EC2 instance.
+
+Example deployment tasks:
+
+```yaml
+---
+- name: Deploy website
+  hosts: webservers
+  become: true
+
+  tasks:
+
+    - name: Pull website image
+      community.docker.docker_image:
+        name: samzcode/my-website:latest
+        source: pull
+
+    - name: Remove old container
+      community.docker.docker_container:
+        name: my-website
+        state: absent
+
+    - name: Start website container
+      community.docker.docker_container:
+        name: my-website
+        image: samzcode/my-website:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "80:80"
+```
+
+Install the Docker collection if required:
+
+```bash
+ansible-galaxy collection install community.docker
+```
+
+---
+
+# 🔄 Terraform + Ansible + Docker
+
+This Ansible project is designed to integrate with Terraform.
+
+Terraform is responsible for **infrastructure provisioning**:
+
+```text
+VPC
+Subnet
+Security Group
+EC2
+Elastic IP
+```
+
+Ansible is responsible for **server configuration**:
+
+```text
+Update server
+Install packages
+Install Docker
+Configure Docker
+Prepare application environment
+Deploy application
+```
+
+Docker is responsible for **application execution**:
+
+```text
+Docker Image
+      ↓
+Docker Container
+      ↓
+Website
+```
+
+---
+
+# 🤖 GitHub Actions Integration
+
+The final automation will run from GitHub Actions.
+
+The intended workflow is:
+
+```text
+Git Push
+   │
+   ▼
+GitHub Actions
+   │
+   ▼
+Terraform
+   │
+   ├── terraform init
+   ├── terraform plan
+   └── terraform apply
+           │
+           ▼
+       AWS EC2
+           │
+           ▼
+      Get EC2 IP
+           │
+           ▼
+        Ansible
+           │
+           ├── Configure EC2
+           ├── Install Docker
+           └── Start Docker
+                   │
+                   ▼
+              Pull Image
+                   │
+                   ▼
+             Run Container
+                   │
+                   ▼
+                Website
+```
+
+The EC2 IP should be obtained dynamically from Terraform rather than hard-coded.
+
+For example:
+
+```bash
+terraform output -raw instance_public_ip
+```
+
+This IP can then be passed to Ansible to create a dynamic inventory.
+
+---
+
+# 🔐 GitHub Actions Secrets
+
+When running Ansible from GitHub Actions, the EC2 private key should be stored as a GitHub Actions secret.
 
 Example:
 
 ```text
-AWS_REGION = eu-north-1
+EC2_SSH_KEY
 ```
 
-Credentials are **not stored directly inside the workflow file**.
+The workflow can create the temporary key file:
 
-This prevents AWS credentials from being exposed in the repository.
+```bash
+echo "${{ secrets.EC2_SSH_KEY }}" > docker.pem
+chmod 400 docker.pem
+```
+
+The private key should never be committed to GitHub.
 
 ---
 
-# 🖥️ Ansible Server Configuration
+# 🎯 Project Objective
 
-After Terraform creates the EC2 instance, Ansible can be used to configure the server automatically.
-
-Instead of manually connecting to the server and installing dependencies, Ansible performs the configuration.
-
-For example:
+The objective of this project is to demonstrate an automated infrastructure and application deployment workflow using:
 
 ```text
 Terraform
-   ↓
-Create EC2
-   ↓
+    ↓
+AWS Infrastructure
+    ↓
 Ansible
-   ↓
-Update Ubuntu
-   ↓
-Install Docker
-   ↓
-Configure Docker
-   ↓
-Deploy Application
-```
-
-Ansible can automate:
-
-* System updates
-* Docker installation
-* Docker configuration
-* Required packages
-* Application directories
-* Docker containers
-* Nginx configuration
-* Application deployment
-
----
-
-# 🐳 Docker
-
-The website is containerized using Docker.
-
-Example Dockerfile:
-
-```dockerfile
-FROM nginx:alpine
-
-COPY . /usr/share/nginx/html
-
-EXPOSE 80
-```
-
-The Docker image contains the website and Nginx web server.
-
-A Docker container is then created from the image.
-
-```text
-Website Files
-      ↓
- Dockerfile
-      ↓
- Docker Image
-      ↓
- Docker Container
-      ↓
-    Nginx
-      ↓
- HTTP Port 80
-```
-
----
-
-# 🌐 Website Deployment
-
-The final application is deployed to the AWS EC2 instance as a Docker container.
-
-Once deployment is completed:
-
-```text
-Internet
-    │
-    ▼
-AWS EC2 Public IP
-    │
-    ▼
-Port 80
-    │
-    ▼
-Docker Container
-    │
-    ▼
-Nginx
-    │
-    ▼
+    ↓
+Server Configuration
+    ↓
+Docker
+    ↓
+Container Deployment
+    ↓
 Website
 ```
 
-The website can then be accessed through:
-
-```text
-http://<EC2-PUBLIC-IP>
-```
+This approach reduces manual configuration and provides a repeatable process for deploying applications to AWS EC2.
 
 ---
 
-# 🔁 Complete CI/CD Pipeline
+# 📚 What This Project Demonstrates
 
-The complete automation flow is:
-
-```text
-Developer pushes code
-          │
-          ▼
-       GitHub
-          │
-          ▼
-   GitHub Actions
-          │
-          ├───────────────┐
-          │               │
-          ▼               ▼
-      Terraform       Application
-          │             Pipeline
-          ▼               │
-     AWS EC2              │
-          │               │
-          └───────┬───────┘
-                  ▼
-               Ansible
-                  │
-                  ▼
-          Configure Server
-                  │
-                  ▼
-              Docker
-                  │
-                  ▼
-          Deploy Website
-                  │
-                  ▼
-             Live Website
-```
+* Infrastructure as Code with Terraform
+* Configuration management with Ansible
+* AWS EC2 provisioning
+* Linux server administration
+* SSH-based remote management
+* Docker installation and configuration
+* Container deployment
+* Docker image management
+* GitHub Actions automation
+* CI/CD concepts
+* Infrastructure and application automation
 
 ---
 
-# 🧪 Local Terraform Testing
+## 🚧 Future Improvements
 
-Before pushing changes to GitHub, Terraform can be tested locally:
+Future versions of the project can include:
 
-```bash
-terraform init
-terraform fmt
-terraform validate
-terraform plan
-```
+* Dynamic Ansible inventory from Terraform
+* Docker Compose deployment
+* Ansible roles
+* Environment variables and secrets management
+* Docker Hub authentication
+* Health checks
+* Automatic rollback
+* Prometheus and Grafana monitoring
+* Separate development and production environments
+* Full Terraform → Ansible → Docker GitHub Actions pipeline
 
-If everything is correct:
-
-```bash
-terraform apply
-```
-
----
-
-# 🔒 Security Considerations
-
-The project follows several basic security practices:
-
-* AWS credentials are stored as GitHub Secrets.
-* Terraform state files are excluded from Git.
-* `.terraform/` is excluded from Git.
-* Private SSH keys are excluded from Git.
-* Sensitive `.tfvars` files are excluded from Git.
-* Only required AWS ports are exposed.
-* SSH access should ideally be restricted to trusted IP addresses.
-
-For production environments, additional security should be implemented, including:
-
-* IAM least-privilege policies
-* OIDC authentication for GitHub Actions
-* Private subnets
-* AWS Systems Manager
-* HTTPS/TLS
-* Secrets Manager
-* Remote Terraform state
-* State locking
-* Monitoring and logging
-
----
-
-# 📦 Terraform State
-
-Terraform uses a state file to track infrastructure.
-
-```text
-terraform.tfstate
-```
-
-The state allows Terraform to understand the relationship between the configuration and the infrastructure running in AWS.
-
-For a production CI/CD environment, Terraform state should be stored remotely rather than on the GitHub Actions runner.
-
-A future improvement for this project is:
-
-```text
-Terraform
-     ↓
-Amazon S3
-     ↓
-Remote Terraform State
-```
-
----
-
-# 🎯 CI/CD Pipeline Goals
-
-The final version of this project aims to achieve:
-
-```text
-git push
-   ↓
-GitHub Actions
-   ↓
-Terraform
-   ↓
-Create/Update AWS Infrastructure
-   ↓
-Ansible
-   ↓
-Configure EC2
-   ↓
-Docker
-   ↓
-Build/Deploy Website
-   ↓
-Live Application
-```
-
-This means that infrastructure and application deployment can be performed with minimal manual intervention.
-
----
-
-# 📚 DevOps Concepts Demonstrated
-
-This project demonstrates practical knowledge of:
-
-* Infrastructure as Code
-* Cloud Computing
-* AWS EC2
-* AWS VPC Networking
-* Terraform
-* Terraform State
-* Terraform Variables
-* Terraform Outputs
-* Terraform Modules
-* Git
-* GitHub
-* GitHub Actions
-* CI/CD
-* Ansible
-* Configuration Management
-* Docker
-* Containerization
-* Nginx
-* Linux
-* SSH
-* Cloud Infrastructure Automation
-
----
-
-# 🚀 Future Improvements
-
-Planned improvements include:
-
-* [ ] Configure Terraform remote state using Amazon S3
-* [ ] Add automated Terraform `apply`
-* [ ] Add Terraform approval workflow
-* [ ] Integrate Ansible with Terraform outputs
-* [ ] Automate Docker installation with Ansible
-* [ ] Build Docker images automatically
-* [ ] Push images to Docker Hub
-* [ ] Automatically deploy the latest image to EC2
-* [ ] Add application health checks
-* [ ] Add HTTPS using SSL/TLS
-* [ ] Add monitoring with Prometheus and Grafana
-* [ ] Add centralized logging
-* [ ] Use GitHub OIDC instead of long-lived AWS access keys
-* [ ] Implement Terraform modules
-* [ ] Add separate development and production environments
-
----
-
-# 💡 What This Project Shows
-
-This project demonstrates how modern DevOps practices can be combined to automate both **infrastructure and application delivery**.
-
-Instead of manually:
-
-```text
-Create EC2
-Install Docker
-Configure server
-Copy website
-Start container
-Update application
-```
-
-the process becomes:
-
-```text
-git push
-   ↓
-Automated CI/CD
-   ↓
-Terraform
-   ↓
-Ansible
-   ↓
-Docker
-   ↓
-AWS
-   ↓
-Live Website
-```
-
-The project therefore provides practical experience with **Infrastructure as Code, Configuration Management, Containerization, Cloud Computing, and Continuous Integration/Continuous Deployment**.
-
----
-
-# 👨‍💻 Author
-
-**Olayinka Olayiwola**
-
-Cloud & DevOps Engineering
-
-### Technologies
-
-```text
-AWS | Terraform | Ansible | Docker | GitHub Actions
-Linux | Git | CI/CD | Nginx | Cloud Engineering
-```
