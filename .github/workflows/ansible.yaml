@@ -46,7 +46,7 @@ jobs:
         id: ec2_ip
         run: |
           cd terraform
-          terraform init -input=false
+          terraform init -input=false -backend-config="region=eu-west-1"
           EC2_IP=$(terraform output -raw instance_public_ip)
           echo "EC2_IP=$EC2_IP" >> "$GITHUB_ENV"
 
