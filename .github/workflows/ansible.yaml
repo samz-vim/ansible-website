@@ -39,6 +39,9 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > docker.pem
           chmod 400 docker.pem
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
       - name: Get EC2 public IP
         id: ec2_ip
         run: |
