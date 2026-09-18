@@ -1,4 +1,4 @@
-# Ansible EC2 Configuration & Deployment with automated CICD infrastructure with terraform and github action
+# Ansible EC2 Configuration & Deployment , Automated CICD infrastructure with terraform and github action
 
 ## 📌 Overview
 
