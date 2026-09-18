@@ -1,0 +1,25 @@
+---
+- name: Deploy website
+  hosts: webservers
+  become: true
+
+  tasks:
+
+    - name: Pull website image
+      community.docker.docker_image:
+        name: samzcode/my-website:latest
+        source: pull
+
+    - name: Remove old container
+      community.docker.docker_container:
+        name: my-website
+        state: absent
+
+    - name: Start website
+      community.docker.docker_container:
+        name: my-website
+        image: samzcode/my-website:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "80:80"
