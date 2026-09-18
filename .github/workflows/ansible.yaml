@@ -72,7 +72,7 @@ jobs:
 
       - name: Test Ansible connection
         run: |
-          ansible -i ansible/inventory/hosts.ini webservers -m ping
+          ansible -i ansible/inventory.ini webservers -m ping
 
       - name: Configure EC2 and install Docker
         run: |
