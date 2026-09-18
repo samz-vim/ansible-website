@@ -1,0 +1,43 @@
+name: AS
+
+on:
+  repository_dispatch:
+    types: [tf-complete]
+  workflow_run:
+    workflows: ["TF"]
+    types:
+      - completed
+
+  workflow_dispatch:
+
+jobs:
+
+  deploy:
+    name: Deploy to AWS EC2
+    runs-on: ubuntu-latest
+
+    # Only deploy when CI was successful
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Configure SSH key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > docker.pem
+          chmod 400 docker.pem
+          
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install ansible -y
+          
+      - name: Create Ansible inventory
+        run: |
+          echo "[webservers]" > inventory.ini
+          echo "ec2 ansible_host=${{ needs.terraform.outputs.instance_ip }} ansible_user=ubuntu ansible_ssh_private_key_file=$PWD/docker.pem" >> inventory.ini
+
+          
+          echo "================================="
+          echo "Deployment completed successfully"
+          echo "================================="
