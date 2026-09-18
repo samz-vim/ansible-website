@@ -1,0 +1,80 @@
+  # ========================================
+  # 1. CICD PIPELINE
+  # =========================================
+name: CI
+
+on:
+  repository_dispatch:
+    types: [terraform-complete]
+  workflow_run:
+    workflows: ["TF"]
+    types:
+      - completed
+permissions:
+  contents: write
+
+jobs:
+
+  # ========================================
+  # 1. TEST THE APPLICATION 
+  # =========================================
+  test:
+    name: Test Application
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Use this section if your website is Node.j
+
+  # ==========================================
+  # 2. BUILD DOCKER IMAGE AND PUSH TO DOCKER HUB
+  # ==========================================
+  docker:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Debug Terraform Payload
+        run: |
+          echo "================================="
+          echo "Event name:"
+          echo "${{ github.event_name }}"
+          echo "================================="
+          echo "Event action:"
+          echo "${{ github.event.action }}"
+          echo "================================="
+          echo "EC2 IP received:"
+          echo "${{ github.event.client_payload.ec2_ip }}"
+          echo "================================="
+    
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./web
+          file: ./web/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/terraform-website:latest
+            ${{ secrets.DOCKER_USERNAME }}/terraform-website:${{ github.sha }}
+      - name: Trigger CD
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: ci-complete
+          client-payload: '{"ec2_ip":"${{ github.event.client_payload.ec2_ip }}"}'

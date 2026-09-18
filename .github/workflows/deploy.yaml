@@ -1,0 +1,146 @@
+name: CD 
+
+on:
+  repository_dispatch:
+    types: [ci-complete]
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+  workflow_dispatch:
+
+jobs:
+
+  deploy:
+    name: Deploy to AWS EC2
+    runs-on: ubuntu-latest
+
+    # Only deploy when CI was successful
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Init
+      working-directory: ./terraform
+      run: |
+        rm -rf .terraform
+        terraform init -upgrade -reconfigure \
+          -backend-config="region=${{ secrets.AWS_REGION }}"
+
+    - name: Verify Terraform Provider
+      working-directory: ./terraform
+      run: |
+        echo "Terraform version:"
+        terraform version
+    
+        echo ""
+        echo "Installed providers:"
+        terraform providers
+    
+    - name: Get EC2 IP
+      working-directory: ./terraform
+      run: |
+        echo "Getting EC2 public IP from Terraform state..."
+    
+        EC2_IP=$(terraform output -raw instance_public_ip)
+    
+        echo "================================="
+        echo "EC2 IP:"
+        echo "$EC2_IP"
+        echo "================================="
+    
+        echo "EC2_IP=$EC2_IP" >> "$GITHUB_ENV"
+        
+    - name: Configure SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/ec2_key
+        chmod 600 ~/.ssh/ec2_key
+
+    - name: Deploy to EC2
+      env:
+        EC2_USER: ${{ secrets.EC2_USER }}
+        DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      run: |
+    
+        echo "================================="
+        echo "Connecting to EC2:"
+        echo "$EC2_IP"
+        echo "================================="
+    
+        ssh -o StrictHostKeyChecking=no \
+          -i ~/.ssh/ec2_key \
+          "$EC2_USER@$EC2_IP" << EOF
+    
+          echo "Checking Docker..."
+    
+          if ! command -v docker &> /dev/null
+          then
+            echo "Docker not found. Installing Docker..."
+    
+            sudo apt-get update -y
+            sudo apt-get install -y docker.io
+    
+            sudo systemctl enable docker
+            sudo systemctl start docker
+    
+            echo "Docker installation completed."
+          else
+            echo "Docker is already installed."
+          fi
+    
+          echo "Docker version:"
+          docker --version || sudo docker --version
+    
+          echo "Logging into Docker Hub..."
+    
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login \
+            -u "$DOCKER_USERNAME" \
+            --password-stdin
+    
+          echo "Pulling latest image..."
+    
+          sudo docker pull "$DOCKER_USERNAME/my-website:latest"
+    
+          echo "Stopping old container..."
+    
+          sudo docker stop my-website || true
+    
+          echo "Removing old container..."
+    
+          sudo docker rm my-website || true
+    
+          echo "Starting new container..."
+    
+          sudo docker run -d \
+            --name my-website \
+            -p 80:80 \
+            "$DOCKER_USERNAME/my-website:latest"
+    
+          echo "================================="
+          echo "Deployment completed successfully!"
+          echo "================================="
+    
+          echo "Running containers:"
+          sudo docker ps
+        EOF
+        
+          echo "================================="
+          echo "Deployment completed successfully"
+          echo "================================="

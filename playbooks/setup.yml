@@ -1,0 +1,28 @@
+---
+- name: Configure AWS EC2 server
+  hosts: webservers
+  become: true
+
+  tasks:
+
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - git
+          - curl
+          - unzip
+          - ca-certificates
+        state: present
+
+    - name: Display server information
+      command: hostname
+      register: hostname_output
+
+    - name: Show hostname
+      debug:
+        msg: "EC2 hostname is {{ hostname_output.stdout }}"
