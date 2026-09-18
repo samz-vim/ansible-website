@@ -18,7 +18,7 @@
     - name: Start website
       community.docker.docker_container:
         name: my-website
-        image: samzcode/my-website:latest
+        image: samzcode/ansible-website:latest
         state: started
         restart_policy: always
         ports:
