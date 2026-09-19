@@ -82,19 +82,22 @@ jobs:
 
       - name: Test Ansible connection
         run: |
-          ansible -i ansible/inventory.ini webservers -m ping
+          ansible -i ansible/inventory.ini webservers -m ping \
+            --ssh-common-args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
       - name: Configure EC2 and install Docker
         run: |
           ansible-playbook \
             -i ansible/inventory.ini \
-            ansible/config.yml
+            ansible/config.yml \
+            --ssh-common-args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
       - name: Deploy website
         run: |
           ansible-playbook \
-            -i ansible/inventoryini \
-            ansible/deploy.yml
+            -i ansible/inventory.ini \
+            ansible/deploy.yml \
+            --ssh-common-args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
           
 
           
