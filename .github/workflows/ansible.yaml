@@ -36,12 +36,12 @@ jobs:
 
       - name: Configure SSH key
         run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > docker.pem
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > docker.pem
           chmod 400 docker.pem
 
       - name: Configure SSH key
         run: |
-          printf '%s\n' '${{ secrets.EC2_SSH_KEY }}' > docker.pem
+          printf '%s\n' '${{ secrets.EC2_SSH_PRIVATE_KEY }}' > docker.pem
           chmod 600 docker.pem
 
       - name: Setup Terraform
