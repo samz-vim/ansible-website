@@ -7,18 +7,18 @@
 
     - name: Pull website image
       community.docker.docker_image:
-        name: samzcode/ansible-website:latest
+        name: samzcode/terraform-website:latest
         source: pull
 
     - name: Remove old container
       community.docker.docker_container:
-        name: my-website
+        name: ansible
         state: absent
 
     - name: Start website
       community.docker.docker_container:
         name: my-website
-        image: samzcode/ansible-website:latest
+        image: samzcode/terraform-website:latest
         state: started
         restart_policy: always
         ports:
