@@ -42,7 +42,7 @@ jobs:
       - name: Configure SSH key
         run: |
           printf '%s\n' '${{ secrets.EC2_SSH_PRIVATE_KEY }}' > docker.pem
-          chmod 600 docker.pem
+          chmod 400 docker.pem
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
