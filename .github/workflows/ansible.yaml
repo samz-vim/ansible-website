@@ -77,14 +77,14 @@ jobs:
       - name: Configure EC2 and install Docker
         run: |
           ansible-playbook \
-            -i ansible/inventory/hosts.ini \
-            ansible/playbooks/configure.yml
+            -i ansible/inventory.ini \
+            ansible/config.yaml
 
       - name: Deploy website
         run: |
           ansible-playbook \
-            -i ansible/inventory/hosts.ini \
-            ansible/playbooks/deploy.yml
+            -i ansible/inventoryini \
+            ansible/deploy.yaml
           
 
           
