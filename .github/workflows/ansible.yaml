@@ -78,13 +78,13 @@ jobs:
         run: |
           ansible-playbook \
             -i ansible/inventory.ini \
-            ansible/config.yaml
+            ansible/config.yml
 
       - name: Deploy website
         run: |
           ansible-playbook \
             -i ansible/inventoryini \
-            ansible/deploy.yaml
+            ansible/deploy.yml
           
 
           
