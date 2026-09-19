@@ -7,7 +7,7 @@
 
     - name: Pull website image
       community.docker.docker_image:
-        name: samzcode/my-website:latest
+        name: samzcode/ansible-website:latest
         source: pull
 
     - name: Remove old container
